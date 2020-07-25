@@ -84,7 +84,7 @@ buildPullRequestId :: Expression (Maybe String)
 buildPullRequestId = Variable "buildbuild.pull_request.id"
 
 -- | If the pull request is a draft, otherwise null if the branch is not a pull request or the provider doesn't support draft pull requests
-buildPullRequestDraft :: Expression (Maybe Boolean)
+buildPullRequestDraft :: Expression (Maybe Bool)
 buildPullRequestDraft = Variable "build.pull_request.draft"
 
 -- | The repository URL of the pull request, otherwise null if the branch is not a pull request
@@ -92,38 +92,41 @@ buildPullRequestRepository :: Expression (Maybe String)
 buildPullRequestRepository = Variable "build.pull_request.repository"
 
 -- | If the pull request comes from a forked repository, otherwise null if the branch is not a pull request
-build.pull_request.repository.fork	Boolean, null	
+buildPulLRequest :: Expression (Maybe Bool)
+buildPulLRequest = Variable "build.pull_request.repository.fork"
 
 -- | The source of the event that created the build
 --
 -- Available sources: ui, api, webhook, trigger_job, schedule
-build.source	String
+buildSource :: Expression String
+buildSource = Variable "build.source"
 
 -- | The tag associated with the commit the current build is based on
-build.tag	String, null
+buildTag :: Expression (Maybe String)
+buildTag = Variable "build.tag"
 
 -- | The default branch of the pipeline the current build is from
-pipeline.default_branch	String, null
+pipelineDefaultBranch :: Expression (Maybe String)
+pipelineDefaultBranch = Variable "pipeline.default_branch"
 
 -- | The ID of the pipeline the current build is from
-pipeline.id	String
+pipelineId :: Expression String
+pipelineId = Variable "pipeline.id"
+
 -- | The repository of the pipeline the current build is from
-pipeline.repository	String, null
+pipelineRepository :: Expression (Maybe String)
+pipelineRepository = Variable "pipeline.repository"
 
 -- | The slug of the pipeline the current build is from
-pipeline.slug	String
+pipelineSlug :: Expression String
+pipelineSlug = Variable "pipeline.slug"
+
 -- | The ID of the organization the current build is running in
-organization.id	String
+organizationId :: Expression String
+organizationId = Variable "organization.id"
 -- | The slug of the organization the current build is running in
-organization.slug	String
-
-
-
-
-
-
-
-
+organizationSlug :: Expression String
+organizationSlug = Variable "organization.slug"
 
 
 
