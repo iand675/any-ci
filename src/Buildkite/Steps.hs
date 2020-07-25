@@ -217,10 +217,8 @@ data Step
 instance ToJSON Step where
   toJSON (Command c) = toJSON c
   toJSON (Wait w) = toJSON w
-  {-
   toJSON (Block b) = toJSON b
   toJSON (Input i) = toJSON i
-  -}
   toJSON (Trigger t) = toJSON t
 
 data ExitStatus 
@@ -311,7 +309,7 @@ instance ToJSON CommandStep where
         , ("concurrency_group" .=) <$> concurrencyGroup
         , if null dependsOn
           then Nothing
-          else Just ("depends_on" .= unwords dependsOn)
+          else Just ("depends_on" .= dependsOn)
         , if null env
           then Nothing
           else Just ("env" .= env)
@@ -347,8 +345,12 @@ instance ToJSON WaitStep where
         ]
   
 data InputField
-  = InputFieldTextInput
-  | InputFieldSelectInput
+  = InputFieldTextInput TextInput
+  | InputFieldSelectInput SelectInput
+
+instance ToJSON InputField where
+  toJSON (InputFieldTextInput t) = toJSON t
+  toJSON (InputFieldSelectInput s) = toJSON s
 
 data TextInput = TextInput
   { text :: String
@@ -358,10 +360,23 @@ data TextInput = TextInput
   , default_ :: Maybe String
   }
 
+instance ToJSON TextInput where
+  toJSON TextInput{..} = object (requiredFields ++ optionalFields)
+    where
+      requiredFields = [ "text" .= text, "key" .= key ]
+      optionalFields = catMaybes
+        [ ("hint" .=) <$> hint
+        , ("required" .=) <$> required
+        , ("default" .=) <$> default_
+        ]
+
 data SelectOption = SelectOption 
   { label :: String
   , value :: String
   }
+
+instance ToJSON SelectOption where
+  toJSON SelectOption{..} = object [ "label" .= label, "value" .= value ]
 
 data SelectInput = SelectInput
   { select :: String
@@ -373,8 +388,24 @@ data SelectInput = SelectInput
   , multiple :: Maybe Bool
   }
 
+instance ToJSON SelectInput where
+  toJSON SelectInput{..} = object (requiredFields ++ catMaybes optionalFields)
+    where
+      requiredFields = 
+        [ "select" .= select 
+        , "key" .= key
+        , "options" .= options
+        ]
+      optionalFields = 
+        [ ("hint" .=) <$> hint
+        , ("required" .=) <$> required
+        , ("default" .=) <$> default_
+        , ("multiple" .=) <$> multiple
+        ]
+
 data BlockStep = BlockStep
-  { prompt :: String
+  { label :: String
+  , prompt :: Maybe String
   , fields :: [InputField]
   , branches :: [String]
   , if_ :: Maybe (Expression Bool)
@@ -382,14 +413,57 @@ data BlockStep = BlockStep
   , allowDependencyFailure :: Maybe Bool
   }
 
+instance ToJSON BlockStep where
+  toJSON BlockStep{..} = object (requiredFields ++ optionalFields)
+    where
+      requiredFields =
+        [ "block" .= label
+        ]
+      optionalFields = catMaybes
+        [ ("prompt" .=) <$> prompt
+        , if null fields
+          then Nothing
+          else Just ("fields" .= fields)
+        , if null branches
+          then Nothing
+          else Just ("branches" .= unwords branches)
+        , ("if" .=) <$> if_
+        , if null dependsOn
+          then Nothing
+          else Just ("depends_on" .= dependsOn)
+        , ("allow_dependency_failure" .=) <$> allowDependencyFailure
+        ]
+
 data InputStep = InputStep
-  { prompt :: String
+  { label :: String
+  , prompt :: Maybe String
   , fields :: [InputField]
   , branches :: [String]
   , if_ :: Maybe (Expression Bool)
   , dependsOn :: [String]
   , allowDependencyFailure :: Maybe Bool
   }
+
+instance ToJSON InputStep where
+  toJSON InputStep{..} = object (requiredFields ++ optionalFields)
+    where
+      requiredFields =
+        [ "input" .= label
+        ]
+      optionalFields = catMaybes
+        [ ("prompt" .=) <$> prompt
+        , if null fields
+          then Nothing
+          else Just ("fields" .= fields)
+        , if null branches
+          then Nothing
+          else Just ("branches" .= unwords branches)
+        , ("if" .=) <$> if_
+        , if null dependsOn
+          then Nothing
+          else Just ("depends_on" .= dependsOn)
+        , ("allow_dependency_failure" .=) <$> allowDependencyFailure
+        ]
 
 data BuildAttributes = BuildAttributes 
   { message :: Maybe String
@@ -446,6 +520,6 @@ instance ToJSON TriggerStep where
         , ("if" .=) <$> if_
         , if null dependsOn
           then Nothing
-          else Just ("depends_on" .= intercalate " " dependsOn)
+          else Just ("depends_on" .= dependsOn)
         , ("allow_dependency_failure" .=) <$> allowDependencyFailure
         ]
