@@ -1,3 +1,4 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
 module Buildkite.Steps where
 import Data.Aeson
@@ -148,7 +149,7 @@ data CommandStep = CommandStep
   , branches :: [String]
   , concurrency :: Maybe Int
   , concurrencyGroup :: Maybe String
-  , dependsOn :: Maybe String
+  , dependsOn :: [String]
   , env :: Maybe (HashMap String String)
   , if_ :: Maybe (Expression Bool)
   -- Alias: identifier
@@ -162,10 +163,57 @@ data CommandStep = CommandStep
   , timeoutInMinutes :: Maybe Int
   }
 
-data WaitStep
+data WaitStep = WaitStep
+  { continueOnFailure :: Maybe Bool
+  , if_ :: Maybe (Expression Bool)
+  , dependsOn :: [String]
+  , allowDependencyFailure :: Maybe Bool
+  }
 
-data BlockStep
+data InputField
+  = InputFieldTextInput
+  | InputFieldSelectInput
 
-data InputStep
+data TextInput = TextInput
+  { text :: String
+  , key :: String
+  , hint :: Maybe String
+  , required :: Maybe Bool
+  , default_ :: Maybe String
+  }
+
+data SelectOption = SelectOption 
+  { label :: String
+  , value :: String
+  }
+
+data SelectInput = SelectInput
+  { select :: String
+  , key :: String
+  , options :: [SelectOption]
+  , hint :: Maybe String
+  , required :: Maybe Bool
+  , default_ :: Maybe String
+  , multiple :: Maybe Bool
+  }
+
+data BlockStep = BlockStep
+  { prompt :: String
+  , fields :: [InputField]
+  , branches :: [String]
+  , if_ :: Maybe (Expression Bool)
+  , dependsOn :: [String]
+  , allowDependencyFailure :: Maybe Bool
+  }
+
+data InputStep = InputStep
+  { prompt :: String
+  , fields :: [InputField]
+  , branches :: [String]
+  , if_ :: Maybe (Expression Bool)
+  , dependsOn :: [String]
+  , allowDependencyFailure :: Maybe Bool
+  }
+
 
 data TriggerStep

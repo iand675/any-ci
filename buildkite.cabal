@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8842b666986a5cfce3b78fc352a76984d8f4300494262c10b0b77e6f36c71a84
+-- hash: 3cfc8388bf6a1cd837dafd9f0c6c851bf9fef90bfb78230844d48c228bf2d8db
 
 name:           buildkite
 version:        0.1.0.0
@@ -36,6 +36,7 @@ library
       aeson
     , base >=4.7 && <5
     , unordered-containers
+    , yaml
   default-language: Haskell2010
 
 executable buildkite-exe
@@ -50,6 +51,7 @@ executable buildkite-exe
     , base >=4.7 && <5
     , buildkite
     , unordered-containers
+    , yaml
   default-language: Haskell2010
 
 test-suite buildkite-test
@@ -65,4 +67,5 @@ test-suite buildkite-test
     , base >=4.7 && <5
     , buildkite
     , unordered-containers
+    , yaml
   default-language: Haskell2010
