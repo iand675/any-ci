@@ -1,12 +1,22 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Buildkite.Steps where
 import Data.Aeson
 import Data.HashMap.Strict (HashMap)
-import Data.List.NonEmpty (NonEmpty)
+import qualified Data.HashMap.Strict as H
+import Data.Maybe (catMaybes)
+import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty(..))
 
 data Pipeline = Pipeline
 
+-- parens
+-- not
+-- and
+-- or
+-- ==
 -- Expression stuff
 data Regex
 data Expression a where
@@ -21,10 +31,70 @@ data Expression a where
   Str :: String -> Expression String
   Bool :: Bool -> Expression Bool
   Null :: Expression (Maybe a)
-  NotNull :: a -> Expression (Maybe a)
+  NotNull :: Expression a -> Expression (Maybe a)
   Regex :: String -> Expression Regex
   Not :: Expression Bool -> Expression Bool
   Variable :: String -> Expression a
+
+instance Show (Expression a) where
+  showsPrec d (l :== r) = showParen (d >= 8) (
+    showsPrec 8 l . 
+    showString " == " .
+    showsPrec 8 r
+    )
+
+  showsPrec d (l :!= r) = showParen (d >= 8) (
+    showsPrec 8 l . 
+    showString " != " .
+    showsPrec 8 r
+    )
+
+  showsPrec d (l :=~ r) = showParen (d >= 9) (
+    showsPrec 9 l . 
+    showString " =~ " .
+    showsPrec 9 r
+    )
+
+  showsPrec d (l :!~ r) = showParen (d >= 9) (
+    showsPrec 9 l . 
+    showString " !~ " .
+    showsPrec 9 r
+    )
+
+  showsPrec d (l :&& r) = showParen (d >= 4) (
+    showsPrec 4 l . 
+    showString " && " .
+    showsPrec 4 r
+    )
+
+  showsPrec d (l :|| r) = showParen (d >= 3) (
+    showsPrec 3 l . 
+    showString " || " .
+    showsPrec 3 r
+    )
+
+  showsPrec d (Includes arr e) = showParen (d >= 9) (
+    showsPrec 9 arr . 
+    showString " includes " .
+    showsPrec 9 e
+    )
+
+  showsPrec d (Not e) = showParen (d >= 15) (
+    showString "!" . 
+    showsPrec 15 e
+    )
+
+  showsPrec _ (Regex str) = showString str
+  showsPrec _ Buildkite.Steps.Null = showString "null"
+  showsPrec d (NotNull x) = showsPrec d x
+  showsPrec _ (Int i) = shows i
+  -- TODO better escaping
+  showsPrec _ (Str s) = showString (show s)
+  showsPrec _ (Buildkite.Steps.Bool b) = showString $ if b then "true" else "false"
+  showsPrec _ (Variable s) = showString s
+
+instance ToJSON (Expression a) where
+  toJSON = toJSON . show
 
 buildAuthorEmail :: Expression String
 buildAuthorEmail = Variable "build.author.email"
@@ -130,16 +200,71 @@ organizationSlug :: Expression String
 organizationSlug = Variable "organization.slug"
 
 
+data BuildkiteConfig = BuildkiteConfig
+  { steps :: [Step]
+  }
+
+instance ToJSON BuildkiteConfig where
+  toJSON (BuildkiteConfig{..}) = object ["steps" .= steps]
 
 data Step
-  = Command
-  | Wait
-  | Block
-  | Input
-  | Trigger
+  = Command CommandStep
+  | Wait WaitStep
+  | Block BlockStep
+  | Input InputStep
+  | Trigger TriggerStep
 
-data RetryCondition = AutomaticRetry | ManualRetry
-data Skip = Skip | Don'tSkip | SkipWithReason String
+instance ToJSON Step where
+  toJSON (Command c) = toJSON c
+  toJSON (Wait w) = toJSON w
+  {-
+  toJSON (Block b) = toJSON b
+  toJSON (Input i) = toJSON i
+  -}
+  toJSON (Trigger t) = toJSON t
+
+data ExitStatus 
+  = All 
+  | ExitCode Int
+
+instance ToJSON ExitStatus where
+  toJSON All = toJSON ("*" :: String)
+  toJSON (ExitCode e) = toJSON e
+
+data AutomaticRetry = RetryConditions
+  { exitStatus :: Maybe ExitStatus
+  , limit :: Maybe Int
+  }
+
+instance ToJSON AutomaticRetry where
+  toJSON (RetryConditions{..}) = object $ catMaybes
+    [ ("exit_status" .=) <$> exitStatus
+    , ("limit" .=) <$> limit
+    ]
+
+data ManualRetry = ManualRetryOptions
+  { allowed :: Maybe Bool
+  , permitOnPassed :: Maybe Bool
+  , reason :: Maybe String
+  }
+
+instance ToJSON ManualRetry where
+  toJSON (ManualRetryOptions{..}) = object $ catMaybes
+    [ ("allowed" .=) <$> allowed
+    , ("permit_on_passed" .=) <$> permitOnPassed
+    , ("reason" .=) <$> reason
+    ]
+
+data RetryCondition
+  = AutomaticRetry (Either Bool (NonEmpty AutomaticRetry))
+  | ManualRetry (Either Bool ManualRetry)
+
+instance ToJSON RetryCondition where
+  toJSON (ManualRetry e) = either toJSON toJSON e
+
+data Skip = Skip (Either Bool String)
+instance ToJSON Skip where
+  toJSON (Skip e) = either toJSON toJSON e
 
 data CommandStep = CommandStep
   { commands :: NonEmpty String
@@ -150,7 +275,7 @@ data CommandStep = CommandStep
   , concurrency :: Maybe Int
   , concurrencyGroup :: Maybe String
   , dependsOn :: [String]
-  , env :: Maybe (HashMap String String)
+  , env :: HashMap String String
   , if_ :: Maybe (Expression Bool)
   -- Alias: identifier
   , key :: Maybe String
@@ -163,6 +288,44 @@ data CommandStep = CommandStep
   , timeoutInMinutes :: Maybe Int
   }
 
+instance ToJSON CommandStep where
+  toJSON CommandStep{..} = object (requiredFields ++ optionalFields)
+    where
+      requiredFields = 
+        [ case commands of
+            x :| [] -> "command" .= x
+            x :| xs -> "commands" .= (x : xs)
+        ]
+      optionalFields = catMaybes
+        [ if null agents
+          then Nothing
+          else Just ("agents" .= agents)
+        , ("allow_dependency_failure" .=) <$> allowDependencyFailure
+        , if null artifactPaths
+          then Nothing
+          else Just ("artifact_paths" .= artifactPaths)
+        , if null branches
+          then Nothing
+          else Just ("branches" .= unwords branches)
+        , ("concurrency" .=) <$> concurrency
+        , ("concurrency_group" .=) <$> concurrencyGroup
+        , if null dependsOn
+          then Nothing
+          else Just ("depends_on" .= unwords dependsOn)
+        , if null env
+          then Nothing
+          else Just ("env" .= env)
+        , ("if" .=) <$> if_
+        , ("key" .=) <$> key
+        , ("label" .=) <$> label
+        , ("parallelism" .=) <$> parallelism
+        , ("plugins" .=) <$> plugins
+        , ("retry" .=) <$> retry
+        , ("skip" .=) <$> skip
+        , (\v -> "soft_fail" .= either toJSON toJSON v) <$> softFail
+        , ("timeout_in_minutes" .=) <$> timeoutInMinutes
+        ]
+
 data WaitStep = WaitStep
   { continueOnFailure :: Maybe Bool
   , if_ :: Maybe (Expression Bool)
@@ -170,6 +333,19 @@ data WaitStep = WaitStep
   , allowDependencyFailure :: Maybe Bool
   }
 
+instance ToJSON WaitStep where
+  toJSON (WaitStep Nothing Nothing [] Nothing) = String "wait"
+  toJSON (WaitStep{..}) = object 
+    [ "wait" .= object fields
+    ]
+    where 
+      fields = catMaybes
+        [ ("continue_on_failure" .=) <$> continueOnFailure
+        , ("if" .=) <$> if_
+        , if null dependsOn then Nothing else Just ("depends_on" .= dependsOn)
+        , ("allow_dependency_failure" .=) <$> allowDependencyFailure
+        ]
+  
 data InputField
   = InputFieldTextInput
   | InputFieldSelectInput
@@ -215,5 +391,61 @@ data InputStep = InputStep
   , allowDependencyFailure :: Maybe Bool
   }
 
+data BuildAttributes = BuildAttributes 
+  { message :: Maybe String
+  , commit :: Maybe String
+  , branch :: Maybe String
+  , metadata :: HashMap String String
+  , env :: HashMap String String
+  }
 
-data TriggerStep
+emptyBuildAttrs :: BuildAttributes -> Bool
+emptyBuildAttrs BuildAttributes{..} = 
+  null message && 
+  null commit &&
+  null branch &&
+  null metadata &&
+  null env
+
+instance ToJSON BuildAttributes where
+  toJSON BuildAttributes{..} = object $ catMaybes
+    [ ("message" .=) <$> message
+    , ("commit" .=) <$> commit
+    , ("branch" .=) <$> branch
+    , if null metadata
+      then Nothing 
+      else Just ("metadata" .= metadata)
+    , if null metadata
+      then Nothing 
+      else Just ("env" .= env)
+    ]
+data TriggerStep = TriggerStep
+  { trigger :: String
+  , build :: BuildAttributes
+  , async :: Maybe Bool
+  , branches :: [String]
+  , if_ :: Maybe (Expression Bool)
+  , dependsOn :: [String]
+  , allowDependencyFailure :: Maybe Bool
+  }
+
+instance ToJSON TriggerStep where
+  toJSON TriggerStep{..} = object (requiredFields ++ optionalFields)
+    where
+      requiredFields =
+        [ "trigger" .= trigger
+        ]
+      optionalFields = catMaybes
+        [ if emptyBuildAttrs build
+          then Nothing
+          else Just ("build_attributes" .= build)
+        , ("async" .=) <$> async
+        , if null branches
+          then Nothing
+          else Just ("branches" .= branches)
+        , ("if" .=) <$> if_
+        , if null dependsOn
+          then Nothing
+          else Just ("depends_on" .= intercalate " " dependsOn)
+        , ("allow_dependency_failure" .=) <$> allowDependencyFailure
+        ]
