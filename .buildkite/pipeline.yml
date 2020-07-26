@@ -1,4 +1,7 @@
-
 steps:
-- command: stack build buildkite-exe && stack exec -- buildkite-exe
+- command: stack build && stack exec -- buildkite-exe
   key: gen_pipeline
+- command: echo hello
+  key: dynamic_test
+  depends_on:
+  - gen_pipeline

@@ -6,7 +6,7 @@ import Buildkite.Steps.Types
 main :: IO ()
 main = do
   writePipelineRelativeTo "." $ Pipeline mempty
-    [ Command $ (commandStep $ pure "stack build buildkite-exe && stack exec -- buildkite-exe")
+    [ Command $ (commandStep $ pure "stack build && stack exec -- buildkite-exe")
       { key = Just "gen_pipeline"
       }
     , Command $ (commandStep $ pure "echo hello")
