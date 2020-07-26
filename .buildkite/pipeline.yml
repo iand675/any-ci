@@ -1,6 +1,7 @@
 
 steps:
-  - command: stack build
-    key: initial_build
-  - command: stack exec -- buildkite-exe
-    key: gen_pipeline
+- command: stack build
+  key: initial_build
+- command: stack exec -- buildkite-exe
+  key: gen_pipeline
+  depends_on: initial_build

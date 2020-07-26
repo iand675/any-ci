@@ -14,7 +14,7 @@ main = do
       , dependsOn = pure "initial_build"
       }
     , Command $ (commandStep $ pure "echo hello")
-      { key = Just "gen_pipeline"
+      { key = Just "dynamic_test"
       , dependsOn = pure "gen_pipeline"
       }
     ]
