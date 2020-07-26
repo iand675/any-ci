@@ -25,6 +25,7 @@ dependencies:
 - unordered-containers
 - yaml
 - filepath
+- typed-process
 
 library:
   source-dirs: src
@@ -39,6 +40,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - buildkite
+    - Cabal
 
 tests:
   buildkite-test:

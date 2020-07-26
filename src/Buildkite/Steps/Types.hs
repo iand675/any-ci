@@ -94,12 +94,13 @@ instance Show (Expression a) where
 instance ToJSON (Expression a) where
   toJSON = toJSON . show
 
-data Pipeline = BuildkiteConfig
-  { steps :: [Step]
+data Pipeline = Pipeline
+  { env :: HashMap String String
+  , steps :: [Step]
   } deriving (Show)
 
 instance ToJSON Pipeline where
-  toJSON (BuildkiteConfig{..}) = object ["steps" .= steps]
+  toJSON (Pipeline{..}) = object ((if null env then [] else ["env" .= env]) ++ ["steps" .= steps])
 
 data Step
   = Command CommandStep
@@ -185,6 +186,28 @@ data CommandStep = CommandStep
   , timeoutInMinutes :: Maybe Int
   } deriving (Show)
 
+commandStep :: NonEmpty String -> CommandStep
+commandStep l = CommandStep
+  { commands = l
+  , agents = mempty
+  , allowDependencyFailure = Nothing
+  , artifactPaths = mempty
+  , branches = mempty
+  , concurrency = Nothing
+  , concurrencyGroup = Nothing
+  , dependsOn = mempty
+  , env = mempty
+  , if_ = Nothing
+  , key = Nothing
+  , label = Nothing
+  , parallelism = Nothing
+  , plugins = Nothing
+  , retry = Nothing
+  , skip = Nothing
+  , softFail = Nothing
+  , timeoutInMinutes = Nothing
+  }
+
 instance ToJSON CommandStep where
   toJSON CommandStep{..} = object (requiredFields ++ optionalFields)
     where
@@ -229,6 +252,9 @@ data WaitStep = WaitStep
   , dependsOn :: [String]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
+
+waitStep :: WaitStep
+waitStep = WaitStep Nothing Nothing [] Nothing
 
 instance ToJSON WaitStep where
   toJSON (WaitStep Nothing Nothing [] Nothing) = String "wait"
@@ -313,6 +339,17 @@ data BlockStep = BlockStep
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
 
+blockStep :: String -> BlockStep
+blockStep l = BlockStep
+  { label = l
+  , prompt = Nothing
+  , fields = []
+  , branches = []
+  , if_ = Nothing
+  , dependsOn = []
+  , allowDependencyFailure = Nothing
+  }
+
 instance ToJSON BlockStep where
   toJSON BlockStep{..} = object (requiredFields ++ optionalFields)
     where
@@ -343,6 +380,17 @@ data InputStep = InputStep
   , dependsOn :: [String]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
+
+inputStep :: String -> InputStep
+inputStep l = InputStep
+  { label = l
+  , prompt = Nothing
+  , fields = []
+  , branches = []
+  , if_ = Nothing
+  , dependsOn = []
+  , allowDependencyFailure = Nothing
+  }
 
 instance ToJSON InputStep where
   toJSON InputStep{..} = object (requiredFields ++ optionalFields)
@@ -402,6 +450,17 @@ data TriggerStep = TriggerStep
   , dependsOn :: [String]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
+
+triggerStep :: String -> TriggerStep
+triggerStep t = TriggerStep
+  { trigger = t
+  , build = BuildAttributes Nothing Nothing mempty mempty mempty
+  , async = Nothing
+  , branches = []
+  , if_ = Nothing
+  , dependsOn = []
+  , allowDependencyFailure = Nothing
+  }
 
 instance ToJSON TriggerStep where
   toJSON TriggerStep{..} = object (requiredFields ++ optionalFields)
