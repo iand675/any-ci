@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3cfc8388bf6a1cd837dafd9f0c6c851bf9fef90bfb78230844d48c228bf2d8db
+-- hash: 66eb24a1dd685e44f6c91f6afb804346cecab3bf49d3126bb399e20e0a428f2b
 
 name:           buildkite
 version:        0.1.0.0
@@ -28,6 +28,8 @@ source-repository head
 library
   exposed-modules:
       Buildkite.Steps
+      Buildkite.Steps.Types
+      Buildkite.Steps.Variables
   other-modules:
       Paths_buildkite
   hs-source-dirs:

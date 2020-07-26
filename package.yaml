@@ -24,6 +24,7 @@ dependencies:
 - aeson
 - unordered-containers
 - yaml
+- filepath
 
 library:
   source-dirs: src
