@@ -6,8 +6,8 @@ import System.Exit
 import System.Process.Typed
 
 
-writePipelineRelativeTo :: FilePath -> Pipeline -> IO ()
-writePipelineRelativeTo fp p = encodeFile (fp </> ".buildkite" </> "pipeline.yml") p
+writePipelineFile :: FilePath -> Pipeline -> IO ()
+writePipelineFile fp p = encodeFile fp p
 
 uploadPipeline :: FilePath -> IO ExitCode
 uploadPipeline fp = do
