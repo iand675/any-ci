@@ -1,0 +1,5 @@
+steps:
+- command: echo hello
+  key: dynamic_test
+  depends_on:
+  - gen_pipeline

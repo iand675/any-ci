@@ -1,5 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 module Buildkite.Steps.Types where
@@ -9,6 +10,16 @@ import qualified Data.HashMap.Strict as H
 import Data.Maybe (catMaybes)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.String
+
+newtype StepKey = StepKey String
+  deriving (Show, Eq, Ord, ToJSON, FromJSON, IsString)
+
+unsafeMkStepKey :: String -> StepKey
+unsafeMkStepKey = StepKey
+
+stepKey :: StepKey -> String
+stepKey (StepKey s) = s
 
 -- parens
 -- not
@@ -176,7 +187,7 @@ data CommandStep = CommandStep
   , env :: HashMap String String
   , if_ :: Maybe (Expression Bool)
   -- Alias: identifier
-  , key :: Maybe String
+  , key :: Maybe StepKey
   , label :: Maybe String
   , parallelism :: Maybe Int
   , plugins :: Maybe Object
@@ -249,7 +260,7 @@ instance ToJSON CommandStep where
 data WaitStep = WaitStep
   { continueOnFailure :: Maybe Bool
   , if_ :: Maybe (Expression Bool)
-  , dependsOn :: [String]
+  , dependsOn :: [StepKey]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
 
@@ -335,7 +346,7 @@ data BlockStep = BlockStep
   , fields :: [InputField]
   , branches :: [String]
   , if_ :: Maybe (Expression Bool)
-  , dependsOn :: [String]
+  , dependsOn :: [StepKey]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
 
@@ -377,7 +388,7 @@ data InputStep = InputStep
   , fields :: [InputField]
   , branches :: [String]
   , if_ :: Maybe (Expression Bool)
-  , dependsOn :: [String]
+  , dependsOn :: [StepKey]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
 
@@ -447,7 +458,7 @@ data TriggerStep = TriggerStep
   , async :: Maybe Bool
   , branches :: [String]
   , if_ :: Maybe (Expression Bool)
-  , dependsOn :: [String]
+  , dependsOn :: [StepKey]
   , allowDependencyFailure :: Maybe Bool
   } deriving (Show)
 
